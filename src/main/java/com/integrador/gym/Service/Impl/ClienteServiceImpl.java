@@ -1,8 +1,11 @@
 package com.integrador.gym.Service.Impl;
 
+import com.integrador.gym.Dto.Creacion.ClienteCreacionDTO;
+import com.integrador.gym.Dto.ClienteDTO;
 import com.integrador.gym.Exception.ClienteDniDuplicado;
 import com.integrador.gym.Exception.ClienteNoEncontrado;
 import com.integrador.gym.Exception.UsuarioNoAutorizado;
+import com.integrador.gym.Factory.ClienteFactory;
 import com.integrador.gym.Model.ClienteModel;
 import com.integrador.gym.Model.Enum.Roles;
 import com.integrador.gym.Model.UsuarioModel;
@@ -10,6 +13,7 @@ import com.integrador.gym.Repository.ClienteRepository;
 import com.integrador.gym.Service.ClienteService;
 import com.integrador.gym.Service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,9 @@ public class ClienteServiceImpl implements ClienteService {
     @Autowired
     private UsuarioService usuarioService;
 
+    @Autowired
+    private ClienteFactory clienteFactory;
+
     @Override
     public List<ClienteModel> listarTodos() {
         return clienteRepository.findAll();
@@ -39,17 +46,31 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
-    public ClienteModel crear(ClienteModel cliente) {
-        validarEdadMinima(cliente.getFechaNacimiento());
-        if (clienteRepository.existsByDni(cliente.getDni())) {
-            throw new ClienteDniDuplicado(cliente.getDni());
+    public ClienteDTO crear(ClienteCreacionDTO dto) {
+        validarEdadMinima(dto.getFechaNacimiento());
+        if (clienteRepository.existsByDni(dto.getDni())) {
+            throw new ClienteDniDuplicado(dto.getDni());
         }
+        UsuarioModel usuarioCreador = validarUsuarioCreador(dto.getIdUsuarioCreador());
+        ClienteModel cliente = clienteFactory.crearDesdeDTO(dto, usuarioCreador);
+        ClienteModel guardado = clienteRepository.save(cliente);
+        return toDTO(guardado, usuarioCreador);
+    }
 
-        UsuarioModel usuarioCreador = validarUsuarioCreador(cliente.getUsuario().getIdUsuario());
-
-        cliente.setUsuario(usuarioCreador);
-
-        return clienteRepository.save(cliente);
+    // Método para mapear a DTO
+    private ClienteDTO toDTO(ClienteModel cliente, UsuarioModel usuarioCreador) {
+        ClienteDTO dto = new ClienteDTO();
+        dto.setIdCliente(cliente.getIdCliente());
+        dto.setDni(cliente.getDni());
+        dto.setNombre(cliente.getNombre());
+        dto.setApellido(cliente.getApellido());
+        dto.setTelefono(cliente.getTelefono());
+        dto.setDireccion(cliente.getDireccion());
+        dto.setFechaNacimiento(cliente.getFechaNacimiento());
+        dto.setGenero(cliente.getGenero());
+        dto.setIdUsuarioCreador(usuarioCreador.getIdUsuario());
+        dto.setNombreUsuarioCreador(usuarioCreador.getNombre() + " " + usuarioCreador.getApellido());
+        return dto;
     }
 
     @Override
@@ -76,7 +97,7 @@ public class ClienteServiceImpl implements ClienteService {
 
     @Override
     public void eliminar(Long id) {
-        if (clienteRepository.existsById(id)) {
+        if (!clienteRepository.existsById(id)) {
             throw new ClienteNoEncontrado(id);
         }
         clienteRepository.deleteById(id);

@@ -1,20 +1,14 @@
-package com.integrador.gym.Model;
+package com.integrador.gym.Dto.Creacion;
 
 import com.integrador.gym.Model.Enum.EstadoPlan;
-import jakarta.persistence.*;
+import jakarta.persistence.Lob;
 import jakarta.validation.constraints.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-@Entity @Table(name = "plan")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-public class  PlanModel {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idPlan;
-
+@Setter @Getter
+public class PlanCreacionDTO {
     @NotBlank(message = "El nombre del plan es obligatorio")
     @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
     private String nombre;
@@ -35,17 +29,6 @@ public class  PlanModel {
     @Lob
     private String beneficios;
 
-    @Enumerated(EnumType.STRING)
     @NotNull(message = "El estado del plan es obligatorio")
     private EstadoPlan estado = EstadoPlan.ACTIVO;
-
-    @Column(name = "fecha_creacion")
-    private LocalDateTime fechaCreacion;
-
-    @PrePersist
-    protected void onCreate() {
-        if (fechaCreacion == null) {
-            fechaCreacion = LocalDateTime.now();
-        }
-    }
 }

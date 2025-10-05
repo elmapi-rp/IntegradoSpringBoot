@@ -1,5 +1,9 @@
 package com.integrador.gym.Controller;
 
+import com.integrador.gym.CQRS.UsuarioWriteService;
+import com.integrador.gym.Dto.Actualizacion.UsuarioActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.UsuarioCreacionDTO;
+import com.integrador.gym.Dto.UsuarioDTO;
 import com.integrador.gym.Exception.DniYaRegistrado;
 import com.integrador.gym.Exception.EmailYaRegistrado;
 import com.integrador.gym.Exception.RolNoPermitido;
@@ -16,11 +20,13 @@ import java.util.Map;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
+
+    @Autowired
+    private UsuarioWriteService writeService;
 
     @Autowired
     private UsuarioService usuarioService;
@@ -38,32 +44,26 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crear(@Valid @RequestBody UsuarioModel usuario) {
+    public ResponseEntity<?> crear(@Valid @RequestBody UsuarioCreacionDTO dto) {
         try {
-            UsuarioModel nuevo = usuarioService.crear(usuario);
+            UsuarioDTO nuevo = writeService.crear(dto);
             return ResponseEntity.ok(nuevo);
         } catch (EmailYaRegistrado | DniYaRegistrado e) {
-            return ResponseEntity.badRequest().body(errorResponse(e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(errorResponse("Validación: " + e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("Error interno: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody UsuarioModel datos) {
+    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody UsuarioActualizacionDTO dto) {
         try {
-            UsuarioModel actualizado = usuarioService.actualizar(id, datos);
+            UsuarioDTO actualizado = writeService.actualizar(id, dto);
             return ResponseEntity.ok(actualizado);
         } catch (UsuarioNoEncontrado e) {
             return ResponseEntity.notFound().build();
         } catch (EmailYaRegistrado | DniYaRegistrado | RolNoPermitido e) {
-            return ResponseEntity.badRequest().body(errorResponse(e.getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(errorResponse("Validación: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("Error interno: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", "Error interno: " + e.getMessage()));
         }
     }
 

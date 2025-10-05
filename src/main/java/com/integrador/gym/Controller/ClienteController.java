@@ -1,5 +1,7 @@
 package com.integrador.gym.Controller;
 
+import com.integrador.gym.Dto.Creacion.ClienteCreacionDTO;
+import com.integrador.gym.Dto.ClienteDTO;
 import com.integrador.gym.Exception.ClienteDniDuplicado;
 import com.integrador.gym.Exception.ClienteNoEncontrado;
 import com.integrador.gym.Exception.UsuarioNoAutorizado;
@@ -34,9 +36,9 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crear(@Valid @RequestBody ClienteModel cliente) {
+    public ResponseEntity<?> crear(@Valid @RequestBody ClienteCreacionDTO dto) {
         try {
-            ClienteModel nuevo = clienteService.crear(cliente);
+            ClienteDTO nuevo = clienteService.crear(dto);
             return ResponseEntity.ok(nuevo);
         } catch (ClienteNoEncontrado | UsuarioNoAutorizado e) {
             return ResponseEntity.badRequest().body(errorResponse(e.getMessage()));

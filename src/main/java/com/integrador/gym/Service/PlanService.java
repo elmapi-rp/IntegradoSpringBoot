@@ -1,5 +1,8 @@
 package com.integrador.gym.Service;
 
+import com.integrador.gym.Dto.Actualizacion.PlanActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.PlanCreacionDTO;
+import com.integrador.gym.Dto.PlanDTO;
 import com.integrador.gym.Model.PlanModel;
 
 import java.util.List;
@@ -9,7 +12,7 @@ public interface    PlanService {
     List<PlanModel> listarTodos();
     List<PlanModel> listarActivos();
     Optional<PlanModel> obtenerPorId(Long id);
-    PlanModel crear(PlanModel plan);
-    PlanModel actualizar(Long id, PlanModel planActualizado);
+    PlanDTO crear(PlanCreacionDTO dto);
+    PlanDTO actualizar(Long id, PlanActualizacionDTO dto);
     void eliminar(Long id);
 }

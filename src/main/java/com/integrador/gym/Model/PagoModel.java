@@ -10,11 +10,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "pago")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class PagoModel {
 
     @Id
@@ -36,7 +32,7 @@ public class PagoModel {
     @Column(nullable = false)
     private LocalDateTime fechaPago;
 
-    private String comprobante; // URL o código de transacción
+    private String comprobante;
 
     @PrePersist
     public void onCreate() {

@@ -1,6 +1,9 @@
 package com.integrador.gym.Controller;
 
-import com.integrador.gym.Exception.PagoInvalido;
+import com.integrador.gym.Dto.Actualizacion.PagoActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.PagoCreacionDTO;
+import com.integrador.gym.Dto.PagoDTO;
+import com.integrador.gym.Exception.*;
 import com.integrador.gym.Model.PagoModel;
 import com.integrador.gym.Service.PagoService;
 import jakarta.validation.Valid;
@@ -25,20 +28,33 @@ public class PagoController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crear(@Valid @RequestBody PagoModel pago) {
+
+    public ResponseEntity<?> crear(@Valid @RequestBody PagoCreacionDTO dto) {
         try {
-            PagoModel nuevo = pagoService.crear(pago);
+            PagoDTO nuevo = pagoService.crear(dto);
             return ResponseEntity.ok(nuevo);
         } catch (PagoInvalido e) {
-            return ResponseEntity.badRequest().body(errorResponse(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("Error interno: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    private Map<String, String> errorResponse(String mensaje) {
-        Map<String, String> response = new HashMap<>();
-        response.put("error", mensaje);
-        return response;
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody PagoActualizacionDTO dto) {
+        try {
+            PagoDTO actualizado = pagoService.actualizar(id, dto);
+            return ResponseEntity.ok(actualizado);
+        } catch (PagoInvalido| PagoNoEncontrado e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        try {
+            pagoService.eliminar(id);
+            return ResponseEntity.noContent().build();
+        } catch (PagoNoEncontrado e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

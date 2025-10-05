@@ -1,9 +1,13 @@
 package com.integrador.gym.Service.Impl;
 
+import com.integrador.gym.Dto.Actualizacion.UsuarioActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.UsuarioCreacionDTO;
+import com.integrador.gym.Dto.UsuarioDTO;
 import com.integrador.gym.Exception.DniYaRegistrado;
 import com.integrador.gym.Exception.EmailYaRegistrado;
 import com.integrador.gym.Exception.RolNoPermitido;
 import com.integrador.gym.Exception.UsuarioNoEncontrado;
+import com.integrador.gym.Factory.UsuarioFactory;
 import com.integrador.gym.Model.Enum.Roles;
 import com.integrador.gym.Model.UsuarioModel;
 import com.integrador.gym.Repository.UsuarioRepository;
@@ -17,12 +21,16 @@ import java.time.Period;
 import java.util.List;
 import java.util.Optional;
 
-@Service
+@Service("usuarioServiceImpl")
 @Transactional
 public class UsuarioServiceImpl implements UsuarioService {
 
     @Autowired
+    private UsuarioFactory usuarioFactory;
+    @Autowired
     private UsuarioRepository usuarioRepository;
+
+
 
     @Override
     public List<UsuarioModel> listarTodos() {
@@ -35,45 +43,70 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     @Override
-    public UsuarioModel crear(UsuarioModel usuario) {
-        validarEdadMinima(usuario.getFechaNacimiento());
-        validarUnicidad(usuario.getEmail(), usuario.getDni(), null);
-        gestionarFechaContratacion(usuario);
+    public UsuarioDTO crear(UsuarioCreacionDTO dto) {
+        validarEdadMinima(dto.getFechaNacimiento());
+        validarUnicidad(dto.getEmail(), dto.getDni(), null); // ✅ Así evitas duplicar lógica
 
-        return usuarioRepository.save(usuario);
+        UsuarioModel usuario = usuarioFactory.crearDesdeDTO(dto);
+        if (esEmpleado(usuario.getRoles())) {
+            usuario.setFechaContratacion(LocalDate.now());
+        }
+
+        UsuarioModel guardado = usuarioRepository.save(usuario);
+        return toDTO(guardado);
+    }
+    private UsuarioDTO toDTO(UsuarioModel usuario) {
+        UsuarioDTO dto = new UsuarioDTO();
+        dto.setIdUsuario(usuario.getIdUsuario());
+        dto.setDni(usuario.getDni());
+        dto.setNombre(usuario.getNombre());
+        dto.setApellido(usuario.getApellido());
+        dto.setEmail(usuario.getEmail());
+        dto.setTelefono(usuario.getTelefono());
+        dto.setRoles(usuario.getRoles());
+        dto.setFechaNacimiento(usuario.getFechaNacimiento());
+        dto.setFechaContratacion(usuario.getFechaContratacion());
+        dto.setEstado(usuario.getEstado());
+        dto.setFechaCreacion(usuario.getFechaCreacion());
+
+        return dto;
     }
 
     @Override
-    public UsuarioModel actualizar(Long id, UsuarioModel usuarioActualizado) {
+    public UsuarioDTO actualizar(Long id, UsuarioActualizacionDTO dto) {
         UsuarioModel existente = obtenerPorIdOrThrow(id);
 
-        if (existente.getRoles() == Roles.CLIENTE && esEmpleado(usuarioActualizado.getRoles())) {
+        // Regla de negocio: no se puede convertir CLIENT a empleado directamente
+        if (existente.getRoles() == Roles.CLIENTE && esEmpleado(dto.getRoles())) {
             throw new RolNoPermitido(
-                    "No se puede convertir un cliente en empleado directamente. Use el flujo de contratación."
+                    "No se puede convertir un cliente en empleado directamente."
             );
         }
-        validarEdadMinima(usuarioActualizado.getFechaNacimiento());
-        validarUnicidad(usuarioActualizado.getEmail(), usuarioActualizado.getDni(), id);
-        gestionarFechaContratacion(usuarioActualizado);
-        //Campos que se actulizan
-        existente.setDni(usuarioActualizado.getDni());
-        existente.setNombre(usuarioActualizado.getNombre());
-        existente.setApellido(usuarioActualizado.getApellido());
-        existente.setEmail(usuarioActualizado.getEmail());
-        existente.setPassword(usuarioActualizado.getPassword());
-        existente.setTelefono(usuarioActualizado.getTelefono());
-        existente.setRoles(usuarioActualizado.getRoles());
-        existente.setFechaNacimiento(usuarioActualizado.getFechaNacimiento());
-        existente.setEstado(usuarioActualizado.getEstado());
-        existente.setFechaContratacion(usuarioActualizado.getFechaContratacion());
+        validarEdadMinima(dto.getFechaNacimiento());
+        validarUnicidad(dto.getEmail(), dto.getDni(), id);
+        existente.setDni(dto.getDni());
+        existente.setNombre(dto.getNombre());
+        existente.setApellido(dto.getApellido());
+        existente.setEmail(dto.getEmail());
 
-        return usuarioRepository.save(existente);
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            existente.setPassword(dto.getPassword());
+        }
+
+        existente.setTelefono(dto.getTelefono());
+        existente.setRoles(dto.getRoles());
+        existente.setFechaNacimiento(dto.getFechaNacimiento());
+        existente.setEstado(existente.getEstado()); // Mantener estado actual
+        gestionarFechaContratacion(existente);
+
+        UsuarioModel actualizado = usuarioRepository.save(existente);
+        return toDTO(actualizado);
     }
 
     @Override
     public void eliminar(Long id) {
         if (!usuarioRepository.existsById(id)) {
-            throw new RuntimeException("Usuario no encontrado con ID: " + id);
+            throw new UsuarioNoEncontrado(id);
         }
         usuarioRepository.deleteById(id);
     }
@@ -97,7 +130,7 @@ public class UsuarioServiceImpl implements UsuarioService {
                 throw new EmailYaRegistrado(email);
             }
             if (usuarioRepository.existsByDniAndIdUsuarioNot(dni, idExcluido)) {
-                throw new EmailYaRegistrado(dni);
+                throw new DniYaRegistrado(dni);
             }
         }
     }

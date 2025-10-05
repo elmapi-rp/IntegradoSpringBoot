@@ -1,12 +1,16 @@
 package com.integrador.gym.Service.Impl;
 
+import com.integrador.gym.Dto.Creacion.MembresiaCreacionDTO;
+import com.integrador.gym.Dto.MembresiaDto;
 import com.integrador.gym.Exception.*;
+import com.integrador.gym.Factory.MembresiaFactory;
 import com.integrador.gym.Model.ClienteModel;
 import com.integrador.gym.Model.Enum.EstadoMembresia;
 import com.integrador.gym.Model.Enum.EstadoPlan;
 import com.integrador.gym.Model.MembresiaModel;
 import com.integrador.gym.Model.PlanModel;
 import com.integrador.gym.Model.UsuarioModel;
+import com.integrador.gym.Observer.MembresiaVencimiento;
 import com.integrador.gym.Repository.MembresiaRepository;
 import com.integrador.gym.Service.ClienteService;
 import com.integrador.gym.Service.MembresiaService;
@@ -16,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +39,12 @@ public class MembresiaServiceImpl implements MembresiaService {
     @Autowired
     private UsuarioService usuarioService;
 
+    @Autowired
+    private MembresiaFactory membresiaFactory;
+
+    @Autowired
+    private List<MembresiaVencimiento> listeners;
+
     @Override
     public List<MembresiaModel> listarTodas() {
         return membresiaRepository.findAll();
@@ -47,48 +56,41 @@ public class MembresiaServiceImpl implements MembresiaService {
     }
 
     @Override
-    public MembresiaModel crear(MembresiaModel membresia) {
-        // Validar cliente
-        ClienteModel cliente = validarCliente(membresia.getCliente().getIdCliente());
+    public MembresiaModel crear(MembresiaModel membresiaDTO) {
 
-        // Validar plan
-        PlanModel plan = validarPlan(membresia.getPlan().getIdPlan());
+        ClienteModel cliente = validarCliente(membresiaDTO.getCliente().getIdCliente());
+        PlanModel plan = validarPlan(membresiaDTO.getPlan().getIdPlan());
+        UsuarioModel usuarioCreador = validarUsuarioCreador(membresiaDTO.getUsuario().getIdUsuario());
 
-        // Validar usuario creador
-        UsuarioModel usuarioCreador = validarUsuarioCreador(membresia.getUsuario().getIdUsuario());
-
-        // Regla: No permitir más de una membresía ACTIVA por cliente
         if (membresiaRepository.existsByClienteIdClienteAndEstadoMembresia(
                 cliente.getIdCliente(), EstadoMembresia.ACTIVA)) {
             throw new ClienteYaTieneMembresiaActiva(cliente.getIdCliente());
         }
 
-        // Establecer fecha de inicio (si no se proporciona, usar hoy)
-        if (membresia.getFechaInicio() == null) {
-            membresia.setFechaInicio(LocalDate.now());
-        }
+        MembresiaModel nuevaMembresia = membresiaFactory.crearMembresia(
+                cliente,
+                plan,
+                usuarioCreador,
+                membresiaDTO.getFechaInicio()
+        );
 
-        // Calcular fecha de fin
-        LocalDate fechaFin = membresia.getFechaInicio().plusDays(plan.getDuracionDias());
-        membresia.setFechaFin(fechaFin);
-
-        // Establecer estado
-        membresia.setEstadoMembresia(EstadoMembresia.ACTIVA);
-
-        // Asociar objetos completos (no solo IDs)
-        membresia.setCliente(cliente);
-        membresia.setPlan(plan);
-        membresia.setUsuario(usuarioCreador);
-
-        return membresiaRepository.save(membresia);
+        return membresiaRepository.save(nuevaMembresia);
     }
 
     @Override
-    public MembresiaModel actualizar(Long id, MembresiaModel membresiaActualizada) {
-        // En la mayoría de los casos, NO se permite actualizar una membresía
-        // Solo se permite cancelarla o crear una nueva
-        throw new UnsupportedOperationException("No se permite actualizar una membresía. Use cancelar() o cree una nueva.");
+    public void actualizar(Long id, EstadoMembresia nuevoEstado) {
+        MembresiaModel membresia = obtenerPorIdOrThrow(id);
+        membresia.setEstadoMembresia(nuevoEstado);
+
+        // Notificar a todos los listeners
+        for (MembresiaVencimiento listener : listeners) {
+            listener.onMembresiaPorVencer(membresia);
+        }
+
+        membresiaRepository.save(membresia);
     }
+
+
 
     @Override
     public void cancelar(Long id) {
@@ -130,5 +132,47 @@ public class MembresiaServiceImpl implements MembresiaService {
     private MembresiaModel obtenerPorIdOrThrow(Long id) {
         return membresiaRepository.findById(id)
                 .orElseThrow(() -> new MembresiaNoEncontrada(id));
+    }
+    @Override
+    public MembresiaDto crear(MembresiaCreacionDTO dto) {
+        // Validar y obtener entidades
+        ClienteModel cliente = validarCliente(dto.getIdCliente());
+        PlanModel plan = validarPlan(dto.getIdPlan());
+        UsuarioModel usuarioCreador = validarUsuarioCreador(dto.getIdUsuarioCreador());
+
+        // Regla de negocio: un cliente solo puede tener una membresía ACTIVA
+        if (membresiaRepository.existsByClienteIdClienteAndEstadoMembresia(
+                cliente.getIdCliente(), EstadoMembresia.ACTIVA)) {
+            throw new ClienteYaTieneMembresiaActiva(cliente.getIdCliente());
+        }
+
+        // Crear la membresía usando la fábrica
+        MembresiaModel membresia = membresiaFactory.crearMembresia(
+                cliente,
+                plan,
+                usuarioCreador,
+                dto.getFechaInicio()
+        );
+
+        MembresiaModel guardada = membresiaRepository.save(membresia);
+
+        // Convertir a DTO de salida
+        return toDTO(guardada);
+    }
+
+    // Método auxiliar para mapear a DTO
+    private MembresiaDto toDTO(MembresiaModel membresia) {
+        MembresiaDto dto = new MembresiaDto();
+        dto.setIdMembresia(membresia.getIdMembresia());
+        dto.setIdCliente(membresia.getCliente().getIdCliente());
+        dto.setNombreCliente(membresia.getCliente().getNombre() + " " + membresia.getCliente().getApellido());
+        dto.setIdPlan(membresia.getPlan().getIdPlan());
+        dto.setNombrePlan(membresia.getPlan().getNombre());
+        dto.setFechaInicio(membresia.getFechaInicio());
+        dto.setFechaFin(membresia.getFechaFin());
+        dto.setEstadoMembresia(membresia.getEstadoMembresia());
+        dto.setIdUsuarioCreador(membresia.getUsuario().getIdUsuario());
+        dto.setNombreUsuarioCreador(membresia.getUsuario().getNombre() + " " + membresia.getUsuario().getApellido());
+        return dto;
     }
 }

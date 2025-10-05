@@ -1,12 +1,19 @@
 package com.integrador.gym.Service.Impl;
 
+import com.integrador.gym.Dto.Actualizacion.PagoActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.PagoCreacionDTO;
+import com.integrador.gym.Dto.PagoDTO;
 import com.integrador.gym.Exception.*;
+import com.integrador.gym.Factory.PagoFactory;
 import com.integrador.gym.Model.Enum.EstadoMembresia;
 import com.integrador.gym.Model.MembresiaModel;
 import com.integrador.gym.Model.PagoModel;
+import com.integrador.gym.Repository.MembresiaRepository;
 import com.integrador.gym.Repository.PagoRepository;
-import com.integrador.gym.Service.MembresiaService;
 import com.integrador.gym.Service.PagoService;
+import com.integrador.gym.Strategy.Impl.PrimerPago;
+import com.integrador.gym.Strategy.Impl.RenovacionPago;
+import com.integrador.gym.Strategy.ValidacionPago;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,56 +25,121 @@ import java.util.List;
 @Service
 @Transactional
 public class PagoServiceImpl implements PagoService {
+
     @Autowired
     private PagoRepository pagoRepository;
 
     @Autowired
-    private MembresiaService membresiaService;
+    private MembresiaRepository membresiaRepository;
 
+    @Autowired
+    private PagoFactory pagoFactory;
+
+    @Autowired
+    private List<ValidacionPago> estrategias;
 
     @Override
     public List<PagoModel> listarPorMembresia(Long idMembresia) {
         return pagoRepository.findByMembresiaIdMembresia(idMembresia);
     }
 
-
     @Override
-    public PagoModel crear(PagoModel pago) {
-        // Validar membresía
-        MembresiaModel membresia = validarMembresia(pago.getMembresia().getIdMembresia());
-
-        // Validar fecha de pago (no futura)
-        if (pago.getFechaPago() == null) {
-            pago.setFechaPago(LocalDateTime.now());
-        }
-        if (pago.getFechaPago().isAfter(LocalDateTime.now().plusMinutes(5))) {
+    public PagoDTO crear(PagoCreacionDTO dto) {
+        MembresiaModel membresia = validarMembresia(dto.getIdMembresia());
+        if (dto.getFechaPago() != null && dto.getFechaPago().isAfter(LocalDateTime.now().plusMinutes(5))) {
             throw new PagoInvalido("La fecha de pago no puede ser futura.");
         }
-
-        // Validar monto: debe coincidir con el plan (solo primera cuota por ahora)
         long cantidadPagos = pagoRepository.countByMembresiaIdMembresia(membresia.getIdMembresia());
         if (cantidadPagos == 0) {
-            BigDecimal montoEsperado = membresia.getPlan().getPrecio();
-            if (pago.getMonto() == null || pago.getMonto().compareTo(montoEsperado) != 0) {
+            if (dto.getMonto() == null || dto.getMonto().compareTo(membresia.getPlan().getPrecio()) != 0) {
                 throw new PagoInvalido(
-                        "El monto del primer pago debe ser exactamente: " + montoEsperado
+                        "El monto del primer pago debe ser exactamente: " + membresia.getPlan().getPrecio()
                 );
             }
         }
-        // En futuras versiones: permitir pagos parciales o renovaciones
+        if (membresia.getEstadoMembresia() == EstadoMembresia.CANCELADA) {
+            throw new PagoInvalido("No se puede pagar una membresía cancelada.");
+        }
+        boolean esPrimerPago = cantidadPagos == 0;
+        ValidacionPago estrategia = null;
+        for (ValidacionPago s : estrategias) {
+            if (esPrimerPago && s instanceof PrimerPago) {
+                estrategia = s;
+                break;
+            } else if (!esPrimerPago && s instanceof RenovacionPago) {
+                estrategia = s;
+                break;
+            }
+        }
+        if (estrategia == null) {
+            throw new RuntimeException("No se encontró estrategia para este tipo de pago");
+        }
 
+        PagoModel pago = pagoFactory.crearDesdeDTO(dto, membresia);
+        PagoModel guardado = pagoRepository.save(pago);
+        return toDTO(guardado);
+    }
+
+    @Override
+    public PagoDTO actualizar(Long id, PagoActualizacionDTO dto) {
+        PagoModel pagoExistente = obtenerPorIdOrThrow(id);
+
+        // Validar membresía
+        MembresiaModel membresia = validarMembresia(dto.getIdMembresia());
+
+        // Validar fecha de pago
+        if (dto.getFechaPago() != null && dto.getFechaPago().isAfter(LocalDateTime.now().plusMinutes(5))) {
+            throw new PagoInvalido("La fecha de pago no puede ser futura.");
+        }
+
+        // Validar monto
+        if (dto.getMonto() == null || dto.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PagoInvalido("El monto debe ser mayor a 0.");
+        }
+
+        // Validar estado de membresía
         if (membresia.getEstadoMembresia() == EstadoMembresia.CANCELADA) {
             throw new PagoInvalido("No se puede pagar una membresía cancelada.");
         }
 
-        pago.setMembresia(membresia);
+        // Actualizar campos
+        pagoExistente.setMembresia(membresia);
+        pagoExistente.setMonto(dto.getMonto());
+        pagoExistente.setMetodoPago(dto.getMetodoPago());
+        pagoExistente.setFechaPago(dto.getFechaPago());
+        pagoExistente.setComprobante(dto.getComprobante());
 
-        return pagoRepository.save(pago);
+        PagoModel guardado = pagoRepository.save(pagoExistente);
+        return toDTO(guardado);
     }
 
+    @Override
+    public void eliminar(Long id) {
+        PagoModel pago = obtenerPorIdOrThrow(id);
+        pagoRepository.delete(pago);
+    }
+
+    // === REGLAS DE NEGOCIO ===
 
     private MembresiaModel validarMembresia(Long idMembresia) {
-        return membresiaService.obtenerPorId(idMembresia)
+        return membresiaRepository.findById(idMembresia)
                 .orElseThrow(() -> new PagoInvalido("Membresía no encontrada con ID: " + idMembresia));
+    }
+
+    private PagoDTO toDTO(PagoModel pago) {
+        PagoDTO dto = new PagoDTO();
+        dto.setIdPago(pago.getIdPago());
+        dto.setIdMembresia(pago.getMembresia().getIdMembresia());
+        dto.setNombreMembresia(pago.getMembresia().getPlan().getNombre());
+        dto.setMonto(pago.getMonto());
+        dto.setMetodoPago(pago.getMetodoPago());
+        dto.setFechaPago(pago.getFechaPago());
+        dto.setComprobante(pago.getComprobante());
+        return dto;
+    }
+
+    private PagoModel obtenerPorIdOrThrow(Long id) {
+        return pagoRepository.findById(id)
+                .orElseThrow(() -> new PagoNoEncontrado(id));
     }
 }

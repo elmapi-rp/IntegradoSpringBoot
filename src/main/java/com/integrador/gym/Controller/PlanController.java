@@ -1,5 +1,8 @@
 package com.integrador.gym.Controller;
 
+import com.integrador.gym.Dto.Actualizacion.PlanActualizacionDTO;
+import com.integrador.gym.Dto.Creacion.PlanCreacionDTO;
+import com.integrador.gym.Dto.PlanDTO;
 import com.integrador.gym.Exception.*;
 import com.integrador.gym.Model.PlanModel;
 import com.integrador.gym.Service.PlanService;
@@ -37,21 +40,19 @@ public class PlanController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crear(@Valid @RequestBody PlanModel plan) {
+    public ResponseEntity<?> crear(@Valid @RequestBody PlanCreacionDTO dto) {
         try {
-            PlanModel nuevo = planService.crear(plan);
+            PlanDTO nuevo = planService.crear(dto);
             return ResponseEntity.ok(nuevo);
         } catch (PlanNombreDuplicado | PlanInvalido e) {
-            return ResponseEntity.badRequest().body(errorResponse(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("Error interno: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody PlanModel datos) {
+    public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody PlanActualizacionDTO dto) {
         try {
-            PlanModel actualizado = planService.actualizar(id, datos);
+            PlanDTO actualizado = planService.actualizar(id, dto);
             return ResponseEntity.ok(actualizado);
         } catch (PlanNoEncontrado e) {
             return ResponseEntity.notFound().build();

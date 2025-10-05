@@ -3,10 +3,7 @@ package com.integrador.gym.Model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.integrador.gym.Model.Enum.EstadoMembresia;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,6 +11,7 @@ import java.util.List;
 @Entity @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Table(name = "membresia")
+@Builder
 public class MembresiaModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
