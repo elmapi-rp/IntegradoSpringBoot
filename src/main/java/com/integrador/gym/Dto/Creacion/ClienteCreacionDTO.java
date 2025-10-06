@@ -2,12 +2,12 @@ package com.integrador.gym.Dto.Creacion;
 
 import com.integrador.gym.Model.Enum.Genero;
 import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
-@Setter @Getter
+@Setter @Getter @Builder
+@NoArgsConstructor @AllArgsConstructor
 public class ClienteCreacionDTO {
     @NotBlank(message = "DNI es obligatorio")
     @Pattern(regexp = "\\d{7,8}", message = "DNI debe tener 7 u 8 dígitos")

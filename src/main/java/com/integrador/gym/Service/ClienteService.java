@@ -1,5 +1,6 @@
 package com.integrador.gym.Service;
 
+import com.integrador.gym.Dto.Actualizacion.ClienteActualizacionDTO;
 import com.integrador.gym.Dto.Creacion.ClienteCreacionDTO;
 import com.integrador.gym.Dto.ClienteDTO;
 import com.integrador.gym.Model.ClienteModel;
@@ -13,7 +14,7 @@ public interface ClienteService {
 
     ClienteDTO crear(ClienteCreacionDTO dto);
 
-    ClienteModel actualizar(Long id, ClienteModel clienteActualizado);
+        ClienteDTO actualizar(Long id, ClienteActualizacionDTO dto);
     void eliminar(Long id);
     boolean existePorDni(String dni);
 }

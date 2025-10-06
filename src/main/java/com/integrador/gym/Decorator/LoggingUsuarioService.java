@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-@Primary @Component @Service
+@Primary  @Service
 public class LoggingUsuarioService implements UsuarioService {
 
     @Autowired
@@ -25,32 +25,42 @@ public class LoggingUsuarioService implements UsuarioService {
     }
     @Override
     public List<UsuarioModel> listarTodos() {
-        System.out.println("Llamando a listarTodos()");
-        return delegate.listarTodos();
+        System.out.println("[LOG]: Listando todos los usuarios...");
+        List<UsuarioModel> usuarios = delegate.listarTodos();
+        System.out.println("[LOG] Total encontrados: " + usuarios.size());
+        return usuarios;
     }
 
     @Override
     public Optional<UsuarioModel> obtenerPorId(Long id) {
         System.out.println("LOG: Obteniendo usuario con ID " + id);
-        return delegate.obtenerPorId(id);
-
+        Optional<UsuarioModel> usuario = delegate.obtenerPorId(id);
+        System.out.println(usuario.isPresent()
+                ? "[LOG] Usuario encontrado: " + usuario.get().getNombre()
+                : "[LOG] Usuario no encontrado con ID " + id);
+        return usuario;
     }
 
     @Override
     public UsuarioDTO crear(UsuarioCreacionDTO dto) {
-        System.out.println("Creando usuario: " + dto.getNombre());
-        return delegate.crear(dto);
+        System.out.println("Creando nuevo usuario: " + dto.getNombre());
+        UsuarioDTO nuevo = delegate.crear(dto);
+        System.out.println("[LOG] Usuario creado con ID: " + nuevo.getIdUsuario());
+        return nuevo;
     }
 
     @Override
     public UsuarioDTO actualizar(Long id, UsuarioActualizacionDTO dto) {
         System.out.println("LOG: Actualizando usuario con ID " + id);
-        return delegate.actualizar(id, dto);
+        UsuarioDTO actualizado = delegate.actualizar(id, dto);
+        System.out.println("[LOG] Usuario actualizado correctamente.");
+        return actualizado;
     }
 
     @Override
     public void eliminar(Long id) {
         System.out.println("LOG: Eliminando usuario con ID " + id);
         delegate.eliminar(id);
+        System.out.println("[LOG] Usuario eliminado correctamente.");
     }
 }
