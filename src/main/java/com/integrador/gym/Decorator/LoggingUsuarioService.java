@@ -64,5 +64,6 @@ public class LoggingUsuarioService implements UsuarioService {
         delegate.eliminar(id);
         System.out.println("[LOG] Usuario ha sido eliminado correctamente.");
         System.out.println("[LOG] Acción de eliminación completada por Elsa.");
+
     }
 }
