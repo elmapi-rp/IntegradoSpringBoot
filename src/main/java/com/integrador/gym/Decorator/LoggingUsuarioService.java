@@ -30,7 +30,7 @@ public class LoggingUsuarioService implements UsuarioService {
         System.out.println("[LOG] Total encontrados: " + usuarios.size());
         return usuarios;
     }
-// Cambio de prueba de Elsa
+// Cambio de prueba de Elsafff
     @Override
     public Optional<UsuarioModel> obtenerPorId(Long id) {
         System.out.println("LOG: Obteniendo usuario con ID " + id);
