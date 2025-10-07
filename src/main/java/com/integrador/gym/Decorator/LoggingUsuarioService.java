@@ -30,7 +30,7 @@ public class LoggingUsuarioService implements UsuarioService {
         System.out.println("[LOG] Total encontrados: " + usuarios.size());
         return usuarios;
     }
-
+// Cambio de prueba de Elsa
     @Override
     public Optional<UsuarioModel> obtenerPorId(Long id) {
         System.out.println("LOG: Obteniendo usuario con ID " + id);
@@ -61,6 +61,6 @@ public class LoggingUsuarioService implements UsuarioService {
     public void eliminar(Long id) {
         System.out.println("LOG: Eliminando usuario con ID " + id);
         delegate.eliminar(id);
-        System.out.println("[LOG] Usuario eliminado correctamente.");
+        System.out.println("[LOG] Usuario ha sido eliminado correctamente.");
     }
 }

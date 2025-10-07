@@ -31,4 +31,5 @@ public class ClienteCreacionDTO {
 
     @NotNull(message = "ID del usuario creador es obligatorio")
     private Long idUsuarioCreador;
+    
 }
