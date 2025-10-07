@@ -34,6 +34,9 @@
             return clienteService.listarTodos();
         }
 
+
+
+
         @GetMapping("/{id}")
         public ResponseEntity<ClienteModel> obtener(@PathVariable Long id) {
             return clienteService.obtenerPorId(id)
@@ -92,7 +95,7 @@
 
         private Map<String, String> errorResponse(String mensaje) {
             Map<String, String> response = new HashMap<>();
-            response.put("error", mensaje);
+            response.put("Error", mensaje);
             return response;
         }
     }

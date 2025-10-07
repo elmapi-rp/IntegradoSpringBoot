@@ -18,4 +18,5 @@ public class MembresiaDto {
     private EstadoMembresia estadoMembresia;
     private Long idUsuarioCreador;
     private String nombreUsuarioCreador;
+
 }
