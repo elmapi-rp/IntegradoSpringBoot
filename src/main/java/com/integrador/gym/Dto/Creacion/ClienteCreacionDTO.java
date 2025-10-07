@@ -17,6 +17,7 @@ public class ClienteCreacionDTO {
     @NotBlank(message = "Nombre es obligatorio")
     private String nombre;
 
+    
     @NotBlank(message = "Apellido es obligatorio")
     private String apellido;
 
