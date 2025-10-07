@@ -7,6 +7,7 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Setter @Getter @Builder
+
 @NoArgsConstructor @AllArgsConstructor
 public class ClienteCreacionDTO {
     @NotBlank(message = "DNI es obligatorio")
