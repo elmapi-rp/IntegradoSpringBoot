@@ -49,13 +49,13 @@ public class MembresiaController {
         } catch (MembresiaNoEncontrada e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("error al cancelar: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(errorResponse("Error al cancelar: " + e.getMessage()));
         }
     }
 
     private Map<String, String> errorResponse(String mensaje) {
         Map<String, String> response = new HashMap<>();
-        response.put("error", mensaje);
+        response.put("Error", mensaje);
         return response;
     }
 }
