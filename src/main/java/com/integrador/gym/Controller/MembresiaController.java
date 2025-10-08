@@ -49,7 +49,7 @@ public class MembresiaController {
         } catch (MembresiaNoEncontrada e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(errorResponse("Error al cancelar: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(errorResponse("error al cancelar: " + e.getMessage()));
         }
     }
 
