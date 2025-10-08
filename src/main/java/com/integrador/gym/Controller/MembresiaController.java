@@ -41,7 +41,7 @@ public class MembresiaController {
         }
     }
 
-    @PatchMapping("/{id}/cancelar")
+    @PatchMapping("/{id}/Cancelar")
     public ResponseEntity<Map<String, String>> cancelar(@PathVariable Long id) {
         try {
             membresiaService.cancelar(id);
